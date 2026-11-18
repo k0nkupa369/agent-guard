@@ -21,6 +21,16 @@ The default demo verifies the original form, applies a bundled edit that confirm
 
 The terminal progress and verdict go to stderr. Use `npm run --silent demo` to pipe the JSON report from stdout. The report includes each check's reference, rendered form result, confirmation, and matching email or failure. Exit status 4 identifies an invalid proposal.
 
+## Webhook retries
+
+```sh
+npm run --silent webhook
+```
+
+The proposed edit adds a second webhook event type. The guard sends event A, retries A, and sends a distinct event B for the same lead. All requests return HTTP 204, but the bundled edit writes three ledger entries where two are expected. The guard restores the original definition and verifies it with fresh events. The default exits with status `2`.
+
+Use `-- --scenario valid` to keep the edit or `-- --scenario suppress-distinct` to see a definition that loses B instead. The JSON report includes the acknowledgements and expected and observed event IDs. [Recorded webhook run](docs/webhook-run.json)
+
 ## Evaluate a live proposal
 
 Set `OPENAI_API_KEY` in your shell environment, then run:
@@ -31,7 +41,7 @@ npm run --silent demo -- --live
 
 After verifying baseline delivery, Agent Guard sends the synthetic task and form definition to OpenAI in one request to GPT-6 Luna. The request uses your API account. The guard reports the first outcome and runs the same local delivery and recovery checks for a valid proposal. Provider or credential errors exit with status 5. The JSON report identifies the model and includes the proposal when it passes form-definition validation.
 
-Run `npm run check:cli` to check all four demo outcomes, both baseline commands, and the live path with a provider stub. CI runs the same checks without an API key.
+Run `npm run check:cli` to check the contact and webhook demos, both baseline commands, and the live path with a provider stub. CI runs the same checks without an API key.
 
 ## Recorded live walkthrough
 

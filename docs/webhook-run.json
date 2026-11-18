@@ -1,0 +1,161 @@
+{
+  "target": "webhook",
+  "scenario": "broken-edit",
+  "verdict": "EDIT REJECTED — RECOVERY VERIFIED",
+  "change": "restored",
+  "recovery": "verified",
+  "applications": 1,
+  "proposal": {
+    "types": [
+      "lead.created",
+      "lead.qualified"
+    ],
+    "key": "attemptId"
+  },
+  "checks": [
+    {
+      "probes": [
+        {
+          "type": "lead.created",
+          "expected": [
+            "d2b8d7ba-edfd-44f7-8638-b9e26f0cb59a",
+            "0194348f-d3e5-4015-860e-4024bef06626"
+          ],
+          "observed": [
+            "d2b8d7ba-edfd-44f7-8638-b9e26f0cb59a",
+            "0194348f-d3e5-4015-860e-4024bef06626"
+          ],
+          "observedAfterEach": [
+            [
+              "d2b8d7ba-edfd-44f7-8638-b9e26f0cb59a"
+            ],
+            [
+              "d2b8d7ba-edfd-44f7-8638-b9e26f0cb59a"
+            ],
+            [
+              "d2b8d7ba-edfd-44f7-8638-b9e26f0cb59a",
+              "0194348f-d3e5-4015-860e-4024bef06626"
+            ]
+          ],
+          "acknowledgements": [
+            204,
+            204,
+            204
+          ],
+          "passed": true
+        }
+      ],
+      "unsupportedStatus": 422,
+      "unsupportedWrites": 0,
+      "passed": true,
+      "stage": "baseline"
+    },
+    {
+      "probes": [
+        {
+          "type": "lead.created",
+          "expected": [
+            "d8ca49c0-0773-45d4-a241-f363df6c4d4e",
+            "6c185017-0160-4430-9700-327a68051010"
+          ],
+          "observed": [
+            "d8ca49c0-0773-45d4-a241-f363df6c4d4e",
+            "d8ca49c0-0773-45d4-a241-f363df6c4d4e",
+            "6c185017-0160-4430-9700-327a68051010"
+          ],
+          "observedAfterEach": [
+            [
+              "d8ca49c0-0773-45d4-a241-f363df6c4d4e"
+            ],
+            [
+              "d8ca49c0-0773-45d4-a241-f363df6c4d4e",
+              "d8ca49c0-0773-45d4-a241-f363df6c4d4e"
+            ],
+            [
+              "d8ca49c0-0773-45d4-a241-f363df6c4d4e",
+              "d8ca49c0-0773-45d4-a241-f363df6c4d4e",
+              "6c185017-0160-4430-9700-327a68051010"
+            ]
+          ],
+          "acknowledgements": [
+            204,
+            204,
+            204
+          ],
+          "passed": false
+        },
+        {
+          "type": "lead.qualified",
+          "expected": [
+            "1e0d2c0b-c3df-47ea-9ba1-f6c05058a185",
+            "aa8c9ab3-d305-455a-a5a3-0056b51aa4a0"
+          ],
+          "observed": [
+            "1e0d2c0b-c3df-47ea-9ba1-f6c05058a185",
+            "1e0d2c0b-c3df-47ea-9ba1-f6c05058a185",
+            "aa8c9ab3-d305-455a-a5a3-0056b51aa4a0"
+          ],
+          "observedAfterEach": [
+            [
+              "1e0d2c0b-c3df-47ea-9ba1-f6c05058a185"
+            ],
+            [
+              "1e0d2c0b-c3df-47ea-9ba1-f6c05058a185",
+              "1e0d2c0b-c3df-47ea-9ba1-f6c05058a185"
+            ],
+            [
+              "1e0d2c0b-c3df-47ea-9ba1-f6c05058a185",
+              "1e0d2c0b-c3df-47ea-9ba1-f6c05058a185",
+              "aa8c9ab3-d305-455a-a5a3-0056b51aa4a0"
+            ]
+          ],
+          "acknowledgements": [
+            204,
+            204,
+            204
+          ],
+          "passed": false
+        }
+      ],
+      "passed": false,
+      "stage": "candidate"
+    },
+    {
+      "probes": [
+        {
+          "type": "lead.created",
+          "expected": [
+            "a43d0754-13bd-4a36-b8a7-56d6224188f3",
+            "2455eab0-405d-41bb-8bd3-4b761e58e77e"
+          ],
+          "observed": [
+            "a43d0754-13bd-4a36-b8a7-56d6224188f3",
+            "2455eab0-405d-41bb-8bd3-4b761e58e77e"
+          ],
+          "observedAfterEach": [
+            [
+              "a43d0754-13bd-4a36-b8a7-56d6224188f3"
+            ],
+            [
+              "a43d0754-13bd-4a36-b8a7-56d6224188f3"
+            ],
+            [
+              "a43d0754-13bd-4a36-b8a7-56d6224188f3",
+              "2455eab0-405d-41bb-8bd3-4b761e58e77e"
+            ]
+          ],
+          "acknowledgements": [
+            204,
+            204,
+            204
+          ],
+          "passed": true
+        }
+      ],
+      "unsupportedStatus": 422,
+      "unsupportedWrites": 0,
+      "passed": true,
+      "stage": "recovery"
+    }
+  ]
+}
