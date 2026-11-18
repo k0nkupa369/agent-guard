@@ -1,0 +1,98 @@
+{
+  "scenario": "live",
+  "changeSource": "openai",
+  "model": "gpt-6-luna",
+  "proposal": {
+    "fields": [
+      {
+        "name": "name",
+        "required": true
+      },
+      {
+        "name": "email",
+        "required": true
+      },
+      {
+        "name": "message",
+        "required": true
+      },
+      {
+        "name": "reference",
+        "required": true
+      },
+      {
+        "name": "company",
+        "required": false
+      }
+    ],
+    "emailFields": [
+      "reference",
+      "name",
+      "email",
+      "message",
+      "company"
+    ]
+  },
+  "change": "kept",
+  "checks": [
+    {
+      "stage": "baseline",
+      "reference": "bca2f805-581d-454c-b937-d35ce03583a1",
+      "form": {
+        "status": 200,
+        "matches": true
+      },
+      "confirmation": {
+        "status": 200,
+        "accepted": true
+      },
+      "email": {
+        "subject": "Contact enquiry",
+        "recipients": [
+          "enquiries@example.test"
+        ],
+        "body": "Reference: bca2f805-581d-454c-b937-d35ce03583a1\nName: Casey Example\nEmail: casey@example.test\nMessage: Could you send me a sample catalogue?"
+      }
+    },
+    {
+      "stage": "with-company",
+      "reference": "b1a89aa4-e237-41c7-bde6-0b268cfab400",
+      "form": {
+        "status": 200,
+        "matches": true
+      },
+      "confirmation": {
+        "status": 200,
+        "accepted": true
+      },
+      "email": {
+        "subject": "Contact enquiry",
+        "recipients": [
+          "enquiries@example.test"
+        ],
+        "body": "Reference: b1a89aa4-e237-41c7-bde6-0b268cfab400\nName: Casey Example\nEmail: casey@example.test\nMessage: Could you send me a sample catalogue?\nCompany: Example Studio"
+      }
+    },
+    {
+      "stage": "without-company",
+      "reference": "79d240f8-dc61-47fc-b0a5-8a04c7af850b",
+      "form": {
+        "status": 200,
+        "matches": true
+      },
+      "confirmation": {
+        "status": 200,
+        "accepted": true
+      },
+      "email": {
+        "subject": "Contact enquiry",
+        "recipients": [
+          "enquiries@example.test"
+        ],
+        "body": "Reference: 79d240f8-dc61-47fc-b0a5-8a04c7af850b\nName: Casey Example\nEmail: casey@example.test\nMessage: Could you send me a sample catalogue?"
+      }
+    }
+  ],
+  "recovery": "not-attempted",
+  "verdict": "EDIT ACCEPTED"
+}
