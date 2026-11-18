@@ -20,6 +20,7 @@ export type DeliveryCheck = {
   form: { status: number; matches: boolean } | null;
   confirmation: { status: number; accepted: boolean } | null;
   email: { subject: string; recipients: string[]; body: string } | null;
+  failureCode?: 'mail-timeout';
   failure?: string;
 };
 
@@ -47,7 +48,7 @@ function matchesForm(html: string, expectsCompany: boolean) {
 
 type CheckDelivery = (stage: DeliveryCheck['stage'], company?: string) => Promise<DeliveryCheck>;
 
-export async function withContactDemo(run: (target: ContactTarget, checkDelivery: CheckDelivery) => Promise<void>) {
+export async function withContactDemo<Result>(run: (target: ContactTarget, checkDelivery: CheckDelivery) => Promise<Result>) {
   const { server: smtp, messages } = createInbox();
   const target = { definition: structuredClone(originalForm), withholdMail: false };
   let site: ReturnType<typeof createContactSite> | undefined;
@@ -68,7 +69,7 @@ export async function withContactDemo(run: (target: ContactTarget, checkDelivery
     await siteReady;
     const url = `http://${host}:${portOf(site)}${contactPath}`;
 
-    await run(target, async (stage, company) => {
+    return await run(target, async (stage, company) => {
       const reference = randomUUID();
       const submission = new URLSearchParams({ ...enquiry, reference });
       const expectedLines = [
@@ -120,6 +121,7 @@ export async function withContactDemo(run: (target: ContactTarget, checkDelivery
           }
           const remaining = deadline - performance.now();
           if (remaining <= 0) {
+            check.failureCode = 'mail-timeout';
             throw new Error(`No matching email within ${deliveryWaitMs} ms (${reference})`);
           }
           await delay(Math.min(25, remaining));

@@ -1,6 +1,10 @@
 import { withContactDemo, type DeliveryCheck } from './delivery.ts';
 import { bundledProposals, isFormDefinition, type FormDefinition } from './form-definition.ts';
 import { openAIModel, requestOpenAIProposal } from './openai-proposal.ts';
+import { verdicts } from './outcome-demo.ts';
+import { runWebhookDemo } from './webhook-demo.ts';
+import { runConversionDemo } from './conversion-demo.ts';
+import { runRedirectDemo } from './redirect-demo.ts';
 
 async function runBaseline(simulateNoDelivery: boolean) {
   try {
@@ -25,15 +29,6 @@ async function runBaseline(simulateNoDelivery: boolean) {
 
 const demoScenarios = ['valid', 'broken-baseline', 'failed-recovery'] as const;
 type Scenario = 'broken-edit' | 'live' | (typeof demoScenarios)[number];
-
-const verdicts = {
-  accepted: { exit: 0, text: 'EDIT ACCEPTED' },
-  brokenBaseline: { exit: 1, text: 'BROKEN BASELINE' },
-  recovered: { exit: 2, text: 'EDIT REJECTED — RECOVERY VERIFIED' },
-  recoveryFailed: { exit: 3, text: 'EDIT REJECTED — RECOVERY FAILED' },
-  invalid: { exit: 4, text: 'INVALID PROPOSAL' },
-  providerError: { exit: 5, text: 'PROVIDER ERROR' },
-};
 
 async function runDemo(scenario: Scenario) {
   const live = scenario === 'live';
@@ -120,8 +115,15 @@ if (command === 'baseline' && (args.length === 0 || (args.length === 1 && args[0
   process.exitCode = await runDemo('live');
 } else if (command === 'demo' && args.length === 2 && args[0] === '--scenario' && selectedScenario) {
   process.exitCode = await runDemo(selectedScenario);
+} else if (command === 'webhook') {
+  process.exitCode = await runWebhookDemo(args);
+} else if (command === 'conversion') {
+  process.exitCode = await runConversionDemo(args);
+} else if (command === 'redirect') {
+  process.exitCode = await runRedirectDemo(args);
 } else {
   console.error('Usage: npm run baseline [-- --simulate-no-delivery]');
   console.error(`       npm run demo [-- --live | --scenario ${demoScenarios.join('|')}]`);
+  console.error('       npm run <webhook|conversion|redirect> [-- --scenario ...]');
   process.exitCode = command === 'baseline' ? 2 : 64;
 }
