@@ -2,6 +2,37 @@
 
 Agent Guard checks whether a contact-form enquiry reaches a local mail server.
 
+## Run the local demo
+
+Use Node.js 22.18 or later and run `npm ci` once to install dependencies. Then run:
+
+```sh
+npm run demo
+```
+
+The default demo verifies the original form, applies a bundled edit that confirms enquiries without sending mail, and restores the original form. Recovery is verified when a new enquiry reaches the local inbox. The guard keeps an accepted edit for the current run.
+
+| Command | Outcome | Exit |
+| --- | --- | --- |
+| `npm run demo` | Edit rejected, recovery verified | 2 |
+| `npm run --silent demo -- --scenario valid` | Edit accepted | 0 |
+| `npm run --silent demo -- --scenario broken-baseline` | Baseline broken, proposal left unapplied | 1 |
+| `npm run --silent demo -- --scenario failed-recovery` | Edit rejected, recovery failed | 3 |
+
+The terminal progress and verdict go to stderr. Use `npm run --silent demo` to pipe the JSON report from stdout. The report includes each check's reference, rendered form result, confirmation, and matching email or failure. Exit status 4 identifies an invalid proposal.
+
+## Evaluate a live proposal
+
+Set `OPENAI_API_KEY` in your shell environment, then run:
+
+```sh
+npm run --silent demo -- --live
+```
+
+After verifying baseline delivery, Agent Guard sends the synthetic task and form definition to OpenAI in one request to GPT-6 Luna. The request uses your API account. The guard reports the first outcome and runs the same local delivery and recovery checks for a valid proposal. Provider or credential errors exit with status 5. The JSON report identifies the model and includes the proposal when it passes form-definition validation.
+
+Run `npm run check:cli` to check all four demo outcomes, both baseline commands, and the live path with a provider stub. CI runs the same checks without an API key.
+
 ## Recorded live walkthrough
 
 On 19 November 2026 (Pacific/Auckland), one OpenAI Responses API run used the configured model `gpt-6-luna`. The task was to add an optional Company field and append Company to the email fields.
@@ -19,8 +50,6 @@ All three rendered form and submission checks passed. The guard kept this propos
 The offline quickstart was also verified from a clean copy on Node.js 22.23.1. The edited form confirmed both submissions without sending mail. After restoration, a fresh matching email arrived and `npm run demo` reported **EDIT REJECTED — RECOVERY VERIFIED** with exit status `2`.
 
 ## Verify baseline delivery
-
-Use Node.js 22.18 or later and run `npm ci` once to install dependencies. Then run:
 
 ```sh
 npm run baseline

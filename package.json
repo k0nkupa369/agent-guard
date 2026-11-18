@@ -7,7 +7,9 @@
     "node": ">=22.18.0"
   },
   "scripts": {
-    "baseline": "node src/cli.ts",
+    "baseline": "node src/cli.ts baseline",
+    "demo": "node src/cli.ts demo",
+    "check:cli": "node scripts/check-cli.ts && node scripts/check-live.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

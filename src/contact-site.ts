@@ -1,23 +1,37 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import nodemailer from 'nodemailer';
+import { fieldDetails, type FormDefinition } from './form-definition.ts';
 
 export const contactPath = '/contact';
 
-const form = `<!doctype html>
+export type ContactTarget = {
+  definition: FormDefinition;
+  withholdMail: boolean;
+};
+
+function renderForm(definition: FormDefinition) {
+  const controls = definition.fields.map(({ name, required }) => {
+    const { label, control } = fieldDetails[name];
+    const attributes = `name="${name}"${required ? ' required' : ''}`;
+    const input = control === 'textarea'
+      ? `<textarea ${attributes}></textarea>`
+      : `<input type="${control}" ${attributes}>`;
+    return `  <label>${label} ${input}</label>`;
+  }).join('\n');
+
+  return `<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
 <title>Contact</title>
 <h1>Contact</h1>
 <form method="post" action="${contactPath}">
-  <label>Name <input name="name" required></label>
-  <label>Email <input name="email" type="email" required></label>
-  <label>Message <textarea name="message" required></textarea></label>
-  <label>Reference <input name="reference" required></label>
+${controls}
   <button type="submit">Send enquiry</button>
 </form>
 </html>`;
+}
 
-export function createContactSite(smtpPort: number, simulateNoDelivery: boolean) {
+export function createContactSite(smtpPort: number, target: ContactTarget) {
   const mailer = nodemailer.createTransport({
     host: '127.0.0.1',
     port: smtpPort,
@@ -26,15 +40,14 @@ export function createContactSite(smtpPort: number, simulateNoDelivery: boolean)
     greetingTimeout: 1_000,
     socketTimeout: 1_000,
   });
-  let deliveredFirstEnquiry = false;
-
   async function handle(request: IncomingMessage, response: ServerResponse) {
     if (request.url !== contactPath) {
       response.writeHead(404).end('Page not found');
       return;
     }
+    const { definition, withholdMail } = target;
     if (request.method === 'GET') {
-      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(form);
+      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(renderForm(definition));
       return;
     }
     if (request.method !== 'POST') {
@@ -55,26 +68,28 @@ export function createContactSite(smtpPort: number, simulateNoDelivery: boolean)
         return;
       }
     }
-    const fields = new URLSearchParams(body);
-    const name = fields.get('name')?.trim();
-    const email = fields.get('email')?.trim();
-    const message = fields.get('message')?.trim();
-    const reference = fields.get('reference')?.trim();
-    if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !message ||
-        !reference || !/^[a-zA-Z0-9-]{1,64}$/.test(reference)) {
-      response.writeHead(400).end('Enter a valid name, email, message, and reference');
+    const submitted = new URLSearchParams(body);
+    const values = Object.fromEntries(definition.fields.map(({ name }) => [name, submitted.get(name)?.trim()]));
+    const { email, reference } = values;
+    if (definition.fields.some(({ name, required }) => required && !values[name]) ||
+        (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ||
+        (reference && !/^[a-zA-Z0-9-]{1,64}$/.test(reference))) {
+      response.writeHead(400).end('Enter valid values for the contact form');
       return;
     }
 
-    // The failure scenario delivers the older enquiry before simulating the broken form.
-    if (!simulateNoDelivery || !deliveredFirstEnquiry) {
+    const text = definition.emailFields
+      .filter((name) => values[name])
+      .map((name) => `${fieldDetails[name].label}: ${values[name]}`)
+      .join('\n');
+    // The bundled regression leaves the form confirmation active with an empty email.
+    if (text && !withholdMail) {
       await mailer.sendMail({
         from: 'contact@example.test',
         to: 'enquiries@example.test',
         subject: 'Contact enquiry',
-        text: `Reference: ${reference}\nName: ${name}\nEmail: ${email}\nMessage: ${message}`,
+        text,
       });
-      deliveredFirstEnquiry = true;
     }
     response.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Enquiry submitted');
   }
