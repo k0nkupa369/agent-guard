@@ -7,6 +7,7 @@ export const contactPath = '/contact';
 export type ContactTarget = {
   definition: FormDefinition;
   withholdMail: boolean;
+  recordConversion?: (reference: string, delivered: boolean) => Promise<void>;
 };
 
 function renderForm(definition: FormDefinition) {
@@ -82,8 +83,9 @@ export function createContactSite(smtpPort: number, target: ContactTarget) {
       .filter((name) => values[name])
       .map((name) => `${fieldDetails[name].label}: ${values[name]}`)
       .join('\n');
+    const deliversMail = Boolean(text) && !withholdMail;
     // The bundled regression leaves the form confirmation active with an empty email.
-    if (text && !withholdMail) {
+    if (deliversMail) {
       await mailer.sendMail({
         from: 'contact@example.test',
         to: 'enquiries@example.test',
@@ -91,6 +93,7 @@ export function createContactSite(smtpPort: number, target: ContactTarget) {
         text,
       });
     }
+    if (reference && target.recordConversion) await target.recordConversion(reference, deliversMail);
     response.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Enquiry submitted');
   }
 

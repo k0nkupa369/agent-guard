@@ -31,6 +31,16 @@ The proposed edit adds a second webhook event type. The guard sends event A, ret
 
 Use `-- --scenario valid` to keep the edit or `-- --scenario suppress-distinct` to see a definition that loses B instead. The JSON report includes the acknowledgements and expected and observed event IDs. [Recorded webhook run](docs/webhook-run.json)
 
+## Contact conversions
+
+```sh
+npm run --silent conversion
+```
+
+The guard submits two enquiries and withholds mail for one. Both forms report success. The bundled edit records two conversions, but only one has a matching inbox receipt. The guard restores the original form behavior and verifies it with a fresh enquiry. The default exits with status `2`.
+
+Use `-- --scenario valid` to keep the edit that records only the delivered enquiry. The JSON report shows each confirmation and email, along with the conversion references observed by a local collector.
+
 ## Evaluate a live proposal
 
 Set `OPENAI_API_KEY` in your shell environment, then run:
@@ -41,7 +51,7 @@ npm run --silent demo -- --live
 
 After verifying baseline delivery, Agent Guard sends the synthetic task and form definition to OpenAI in one request to GPT-6 Luna. The request uses your API account. The guard reports the first outcome and runs the same local delivery and recovery checks for a valid proposal. Provider or credential errors exit with status 5. The JSON report identifies the model and includes the proposal when it passes form-definition validation.
 
-Run `npm run check:cli` to check the contact and webhook demos, both baseline commands, and the live path with a provider stub. CI runs the same checks without an API key.
+Run `npm run check:cli` to check the contact, webhook, and conversion demos, both baseline commands, and the live path with a provider stub. CI runs the same checks without an API key.
 
 ## Recorded live walkthrough
 

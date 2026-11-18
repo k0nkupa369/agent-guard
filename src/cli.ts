@@ -3,6 +3,7 @@ import { bundledProposals, isFormDefinition, type FormDefinition } from './form-
 import { openAIModel, requestOpenAIProposal } from './openai-proposal.ts';
 import { verdicts } from './outcome-demo.ts';
 import { runWebhookDemo } from './webhook-demo.ts';
+import { runConversionDemo } from './conversion-demo.ts';
 
 async function runBaseline(simulateNoDelivery: boolean) {
   try {
@@ -115,9 +116,11 @@ if (command === 'baseline' && (args.length === 0 || (args.length === 1 && args[0
   process.exitCode = await runDemo(selectedScenario);
 } else if (command === 'webhook') {
   process.exitCode = await runWebhookDemo(args);
+} else if (command === 'conversion') {
+  process.exitCode = await runConversionDemo(args);
 } else {
   console.error('Usage: npm run baseline [-- --simulate-no-delivery]');
   console.error(`       npm run demo [-- --live | --scenario ${demoScenarios.join('|')}]`);
-  console.error('       npm run webhook [-- --scenario ...]');
+  console.error('       npm run webhook|conversion [-- --scenario ...]');
   process.exitCode = command === 'baseline' ? 2 : 64;
 }

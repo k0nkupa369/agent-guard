@@ -10,6 +10,7 @@
     "baseline": "node src/cli.ts baseline",
     "demo": "node src/cli.ts demo",
     "webhook": "node src/cli.ts webhook",
+    "conversion": "node src/cli.ts conversion",
     "check:cli": "node scripts/check-cli.ts && node scripts/check-live.ts && node scripts/check-outcomes.ts",
     "typecheck": "tsc --noEmit"
   },
