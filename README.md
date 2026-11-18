@@ -41,6 +41,16 @@ The guard submits two enquiries and withholds mail for one. Both forms report su
 
 Use `-- --scenario valid` to keep the edit that records only the delivered enquiry. The JSON report shows each confirmation and email, along with the conversion references observed by a local collector.
 
+## Form redirects
+
+```sh
+npm run --silent redirect
+```
+
+The original temporary redirect uses HTTP 307. The bundled edit makes it permanent with HTTP 301. Node's Fetch follows that redirect as GET, and the destination receives an empty body. The guard restores the 307 and verifies a fresh POST with its original form body. The default exits with status `2`.
+
+Use `-- --scenario valid` to keep a permanent HTTP 308 redirect that preserves the POST and body. The JSON report shows the status, method, and body for each check. [HTTP redirect semantics](https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4)
+
 ## Evaluate a live proposal
 
 Set `OPENAI_API_KEY` in your shell environment, then run:
@@ -51,7 +61,7 @@ npm run --silent demo -- --live
 
 After verifying baseline delivery, Agent Guard sends the synthetic task and form definition to OpenAI in one request to GPT-6 Luna. The request uses your API account. The guard reports the first outcome and runs the same local delivery and recovery checks for a valid proposal. Provider or credential errors exit with status 5. The JSON report identifies the model and includes the proposal when it passes form-definition validation.
 
-Run `npm run check:cli` to check the contact, webhook, and conversion demos, both baseline commands, and the live path with a provider stub. CI runs the same checks without an API key.
+Run `npm run check:cli` to check all four demos, both baseline commands, and the live contact path with a provider stub. CI runs the same checks without an API key.
 
 ## Recorded live walkthrough
 

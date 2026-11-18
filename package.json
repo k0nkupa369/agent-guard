@@ -11,6 +11,7 @@
     "demo": "node src/cli.ts demo",
     "webhook": "node src/cli.ts webhook",
     "conversion": "node src/cli.ts conversion",
+    "redirect": "node src/cli.ts redirect",
     "check:cli": "node scripts/check-cli.ts && node scripts/check-live.ts && node scripts/check-outcomes.ts",
     "typecheck": "tsc --noEmit"
   },

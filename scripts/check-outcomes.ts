@@ -10,7 +10,7 @@ const cases = [
   { scenario: 'suppress-distinct', exit: 2, verdict: 'EDIT REJECTED — RECOVERY VERIFIED', change: 'restored', recovery: 'verified', stages: ['baseline', 'candidate', 'recovery'] },
 ];
 
-const targets = ['webhook', 'conversion'] as const;
+const targets = ['webhook', 'conversion', 'redirect'] as const;
 const selected = process.argv[2];
 assert.ok(selected === undefined || targets.some((target) => target === selected), 'Unknown outcome target');
 
@@ -34,7 +34,23 @@ for (const target of targets.filter((target) => selected === undefined || target
     assert.equal(baseline.passed, fixture.scenario !== 'broken-baseline');
     if (candidate) assert.equal(candidate.passed, fixture.scenario === 'valid');
     if (recovery) assert.equal(recovery.passed, fixture.recovery === 'verified');
-    if (target === 'conversion') {
+    if (target === 'redirect') {
+      const references = new Set<string>();
+      for (const check of report.checks) {
+        references.add(check.reference);
+        assert.equal(check.expected.status, check.stage === 'candidate' ? 308 : 307);
+        assert.equal(new URLSearchParams(check.expected.body).get('reference'), check.reference);
+        assert.equal(check.observed.location, '/received');
+        const unavailable = (check.stage === 'baseline' && fixture.scenario === 'broken-baseline') ||
+          (check.stage === 'recovery' && fixture.scenario === 'failed-recovery');
+        assert.equal(check.observed.destinationStatus, unavailable ? 503 : 200);
+        const brokenRedirect = check.stage === 'candidate' && fixture.scenario !== 'valid';
+        assert.equal(check.observed.status, brokenRedirect ? 301 : check.expected.status);
+        assert.equal(check.observed.method, brokenRedirect ? 'GET' : 'POST');
+        assert.equal(check.observed.body, brokenRedirect ? '' : check.expected.body);
+      }
+      assert.equal(references.size, report.checks.length);
+    } else if (target === 'conversion') {
       assert.deepEqual(baseline.expected, []);
       assert.deepEqual(baseline.observed, []);
       assert.equal(Boolean(baseline.enquiries[0].email), baseline.passed);
@@ -55,30 +71,29 @@ for (const target of targets.filter((target) => selected === undefined || target
         assert.equal(Boolean(recovery.enquiries[0].email), recovery.passed);
         assert.deepEqual(recovery.observed, []);
       }
-      console.log(`${target} ${fixture.scenario}: ${report.verdict} (exit ${run.status})`);
-      continue;
-    }
-    if (candidate) {
-      for (const probe of candidate.probes) {
-        const [first, second] = probe.expected;
-        assert.deepEqual(probe.acknowledgements, [204, 204, 204]);
-        const observed = fixture.scenario === 'valid' ? [first, second] :
-          fixture.scenario === 'suppress-distinct' ? [first] : [first, first, second];
-        assert.deepEqual(probe.observed, observed);
-        assert.deepEqual(probe.observedAfterEach, [[first], observed.slice(0, fixture.scenario === 'valid' ||
-          fixture.scenario === 'suppress-distinct' ? 1 : 2), observed]);
+    } else {
+      if (candidate) {
+        for (const probe of candidate.probes) {
+          const [first, second] = probe.expected;
+          assert.deepEqual(probe.acknowledgements, [204, 204, 204]);
+          const observed = fixture.scenario === 'valid' ? [first, second] :
+            fixture.scenario === 'suppress-distinct' ? [first] : [first, first, second];
+          assert.deepEqual(probe.observed, observed);
+          assert.deepEqual(probe.observedAfterEach, [[first], observed.slice(0, fixture.scenario === 'valid' ||
+            fixture.scenario === 'suppress-distinct' ? 1 : 2), observed]);
+        }
+        assert.deepEqual(candidate.probes.map(({ type }: { type: string }) => type), ['lead.created', 'lead.qualified']);
       }
-      assert.deepEqual(candidate.probes.map(({ type }: { type: string }) => type), ['lead.created', 'lead.qualified']);
-    }
-    for (const stage of [baseline, recovery].filter(Boolean)) {
-      const probe = stage.probes[0];
-      assert.deepEqual(probe.observedAfterEach, stage.passed ?
-        [[probe.expected[0]], [probe.expected[0]], probe.expected] : [[], [], []]);
-    }
-    if (recovery) {
-      assert.equal(recovery.unsupportedStatus, 422);
-      assert.equal(recovery.unsupportedWrites, 0);
-      assert.notDeepEqual(recovery.probes[0].expected, baseline.probes[0].expected);
+      for (const stage of [baseline, recovery].filter(Boolean)) {
+        const probe = stage.probes[0];
+        assert.deepEqual(probe.observedAfterEach, stage.passed ?
+          [[probe.expected[0]], [probe.expected[0]], probe.expected] : [[], [], []]);
+      }
+      if (recovery) {
+        assert.equal(recovery.unsupportedStatus, 422);
+        assert.equal(recovery.unsupportedWrites, 0);
+        assert.notDeepEqual(recovery.probes[0].expected, baseline.probes[0].expected);
+      }
     }
     console.log(`${target} ${fixture.scenario}: ${report.verdict} (exit ${run.status})`);
   }
