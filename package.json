@@ -13,7 +13,9 @@
     "conversion": "node src/cli.ts conversion",
     "redirect": "node src/cli.ts redirect",
     "check:cli": "node scripts/check-cli.ts && node scripts/check-live.ts && node scripts/check-outcomes.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck && npm run check:cli",
+    "eval": "node scripts/eval.ts"
   },
   "dependencies": {
     "mailparser": "3.14.5",
