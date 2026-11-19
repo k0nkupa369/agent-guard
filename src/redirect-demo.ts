@@ -1,15 +1,26 @@
 import { randomUUID } from 'node:crypto';
 import { readRequestBody, withLoopbackHttp } from './loopback-http.ts';
-import { guardOutcome, runOutcome, type OutcomeScenario, type OutcomeStage } from './outcome-demo.ts';
+import { guardOutcome, type OutcomeStage } from './outcome-demo.ts';
+import type { CheckScenario } from './check-definitions.ts';
 
 type Definition = 307 | 308 | 301;
+
+function preservesMethod(value: unknown): value is 307 | 308 {
+  return value === 307 || value === 308;
+}
 const destinationPath = '/received';
 
-async function evaluateRedirect(scenario: OutcomeScenario) {
+export async function evaluateRedirect(scenario: CheckScenario, settings: unknown) {
+  if (typeof settings !== 'object' || settings === null ||
+      !('baselineStatus' in settings) || !preservesMethod(settings.baselineStatus) ||
+      !('candidateStatus' in settings) || !preservesMethod(settings.candidateStatus)) {
+    throw new Error('Redirect settings require baselineStatus and candidateStatus of 307 or 308');
+  }
+  const { baselineStatus, candidateStatus } = settings;
   let destinationUnavailable = false;
   const target = {
-    definition: 307 as Definition,
-    proposal: scenario === 'valid' ? 308 : scenario === 'invalid' ? 302 : 301,
+    definition: baselineStatus as Definition,
+    proposal: scenario.proposal,
   };
 
   return withLoopbackHttp(async (request, response) => {
@@ -28,11 +39,11 @@ async function evaluateRedirect(scenario: OutcomeScenario) {
     response.writeHead(404).end();
   }, async (origin) => {
     async function check(stage: OutcomeStage) {
-      destinationUnavailable = (stage === 'baseline' && scenario === 'broken-baseline') ||
-        (stage === 'recovery' && scenario === 'failed-recovery');
+      destinationUnavailable = (stage === 'baseline' && scenario.fault === 'baseline') ||
+        (stage === 'recovery' && scenario.fault === 'recovery');
       const reference = randomUUID();
       const body = new URLSearchParams({ reference, enquiry: 'A synthetic form submission' });
-      const expected = { status: stage === 'candidate' ? 308 : 307, method: 'POST', body: body.toString() };
+      const expected = { status: stage === 'candidate' ? candidateStatus : baselineStatus, method: 'POST', body: body.toString() };
       const request = { method: 'POST', body, signal: AbortSignal.timeout(1500) };
       const initial = await fetch(`${origin}/submit`, { ...request, redirect: 'manual' });
       const location = initial.headers.get('location');
@@ -61,12 +72,8 @@ async function evaluateRedirect(scenario: OutcomeScenario) {
     }
 
     return guardOutcome(Object.assign(target, {
-      validate: (value: unknown): value is Definition => value === 308 || value === 301,
+      validate: (value: unknown): value is Definition => value === candidateStatus || value === 301,
       check,
     }));
   });
-}
-
-export function runRedirectDemo(args: string[]) {
-  return runOutcome('redirect', args, evaluateRedirect);
 }

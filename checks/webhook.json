@@ -1,0 +1,12 @@
+{
+  "adapter": "webhook",
+  "default": "broken-edit",
+  "scenarios": {
+    "valid": {"proposal": {"types": ["lead.created", "lead.qualified"], "key": "eventId"}, "expect": "accepted"},
+    "broken-baseline": {"proposal": {"types": ["lead.created", "lead.qualified"], "key": "attemptId"}, "expect": "brokenBaseline", "fault": "baseline"},
+    "broken-edit": {"proposal": {"types": ["lead.created", "lead.qualified"], "key": "attemptId"}, "expect": "recovered"},
+    "failed-recovery": {"proposal": {"types": ["lead.created", "lead.qualified"], "key": "attemptId"}, "expect": "recoveryFailed", "fault": "recovery"},
+    "invalid": {"proposal": {"types": ["lead.created", "lead.qualified"], "key": "unknown"}, "expect": "invalid"},
+    "suppress-distinct": {"proposal": {"types": ["lead.created", "lead.qualified"], "key": "leadId"}, "expect": "recovered"}
+  }
+}

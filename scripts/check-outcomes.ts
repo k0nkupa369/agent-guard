@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { checkNames } from '../src/check-definitions.ts';
+import { replayChecks } from './replay.ts';
 
 const cases = [
   { scenario: 'valid', exit: 0, verdict: 'EDIT ACCEPTED', change: 'kept', recovery: 'not-attempted', stages: ['baseline', 'candidate'] },
@@ -11,8 +13,9 @@ const cases = [
 ];
 
 const targets = ['webhook', 'conversion', 'redirect'] as const;
+const additionalChecks = checkNames().filter((name) => name !== 'demo' && !targets.some((target) => target === name));
 const selected = process.argv[2];
-assert.ok(selected === undefined || targets.some((target) => target === selected), 'Unknown outcome target');
+assert.ok(selected === undefined || [...targets, ...additionalChecks].includes(selected), 'Unknown outcome target');
 
 for (const target of targets.filter((target) => selected === undefined || target === selected)) {
   for (const fixture of cases.filter(({ scenario }) => target === 'webhook' || scenario !== 'suppress-distinct')) {
@@ -97,4 +100,9 @@ for (const target of targets.filter((target) => selected === undefined || target
     }
     console.log(`${target} ${fixture.scenario}: ${report.verdict} (exit ${run.status})`);
   }
+}
+
+for (const row of replayChecks(additionalChecks.filter((name) => selected === undefined || name === selected))) {
+  assert.ok(row.matches, `${row.scenario}: expected ${row.expected}, got ${row.actual}, recovered ${row.recovered}`);
+  console.log(`${row.scenario}: ${row.actual}`);
 }

@@ -1,0 +1,12 @@
+{
+  "adapter": "redirect",
+  "default": "preserves-post",
+  "settings": {
+    "baselineStatus": 308,
+    "candidateStatus": 307
+  },
+  "scenarios": {
+    "preserves-post": {"proposal": 307, "expect": "accepted"},
+    "loses-body": {"proposal": 301, "expect": "recovered"}
+  }
+}

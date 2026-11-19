@@ -1,0 +1,38 @@
+{
+  "adapter": "mail",
+  "default": "broken-edit",
+  "proposals": {
+    "valid": {
+      "fields": [
+        {"name": "name", "required": true},
+        {"name": "email", "required": true},
+        {"name": "message", "required": true},
+        {"name": "reference", "required": true},
+        {"name": "company", "required": false}
+      ],
+      "emailFields": [
+        "reference",
+        "name",
+        "email",
+        "message",
+        "company"
+      ]
+    },
+    "broken": {
+      "fields": [
+        {"name": "name", "required": true},
+        {"name": "email", "required": true},
+        {"name": "message", "required": true},
+        {"name": "reference", "required": true},
+        {"name": "company", "required": false}
+      ],
+      "emailFields": []
+    }
+  },
+  "scenarios": {
+    "valid": {"proposal": "valid", "expect": "accepted"},
+    "broken-baseline": {"proposal": "broken", "expect": "brokenBaseline", "fault": "baseline"},
+    "broken-edit": {"proposal": "broken", "expect": "recovered", "defaultOnly": true},
+    "failed-recovery": {"proposal": "broken", "expect": "recoveryFailed", "fault": "recovery"}
+  }
+}

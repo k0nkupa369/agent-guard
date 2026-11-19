@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { readRequestBody, withLoopbackHttp } from './loopback-http.ts';
-import { guardOutcome, runOutcome, type OutcomeScenario, type OutcomeStage } from './outcome-demo.ts';
+import { guardOutcome, type OutcomeStage } from './outcome-demo.ts';
+import type { CheckScenario } from './check-definitions.ts';
 
 const eventTypes = ['lead.created', 'lead.qualified'] as const;
 const keys = ['eventId', 'attemptId', 'leadId'] as const;
@@ -15,17 +16,13 @@ function isDefinition(value: unknown): value is Definition {
     eventTypes.every((type) => types.includes(type)) && key !== undefined && keys.includes(key);
 }
 
-async function evaluateWebhook(scenario: OutcomeScenario | 'suppress-distinct') {
+export async function evaluateWebhook(scenario: CheckScenario) {
   const ledger: string[] = [];
   const seen = new Set<string>();
   let withholdEntries = false;
   const target = {
     definition: structuredClone(original),
-    proposal: {
-      types: [...eventTypes],
-      key: scenario === 'valid' ? 'eventId' : scenario === 'suppress-distinct' ? 'leadId' :
-        scenario === 'invalid' ? 'unknown' : 'attemptId',
-    },
+    proposal: scenario.proposal,
   };
 
   return withLoopbackHttp(async (request, response) => {
@@ -88,8 +85,8 @@ async function evaluateWebhook(scenario: OutcomeScenario | 'suppress-distinct') 
     }
 
     async function check(stage: OutcomeStage) {
-      withholdEntries = (stage === 'baseline' && scenario === 'broken-baseline') ||
-        (stage === 'recovery' && scenario === 'failed-recovery');
+      withholdEntries = (stage === 'baseline' && scenario.fault === 'baseline') ||
+        (stage === 'recovery' && scenario.fault === 'recovery');
       const probes = [await probe('lead.created')];
       if (stage === 'candidate') probes.push(await probe('lead.qualified'));
       let unsupportedStatus: number | undefined;
@@ -108,8 +105,4 @@ async function evaluateWebhook(scenario: OutcomeScenario | 'suppress-distinct') 
 
     return guardOutcome(Object.assign(target, { validate: isDefinition, check }));
   });
-}
-
-export function runWebhookDemo(args: string[]) {
-  return runOutcome('webhook', args, evaluateWebhook, 'suppress-distinct');
 }
