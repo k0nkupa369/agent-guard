@@ -20,6 +20,8 @@ Run `npm run eval` to replay the bundled scenarios and regenerate this report.
 | redirect/broken-edit | EDIT REJECTED — RECOVERY VERIFIED (exit 2) | EDIT REJECTED — RECOVERY VERIFIED (exit 2) | yes |
 | redirect/failed-recovery | EDIT REJECTED — RECOVERY FAILED (exit 3) | EDIT REJECTED — RECOVERY FAILED (exit 3) | no |
 | redirect/invalid | INVALID PROPOSAL (exit 4) | INVALID PROPOSAL (exit 4) | no |
+| redirect-temporary/preserves-post | EDIT ACCEPTED (exit 0) | EDIT ACCEPTED (exit 0) | no |
+| redirect-temporary/loses-body | EDIT REJECTED — RECOVERY VERIFIED (exit 2) | EDIT REJECTED — RECOVERY VERIFIED (exit 2) | yes |
 | webhook/valid | EDIT ACCEPTED (exit 0) | EDIT ACCEPTED (exit 0) | no |
 | webhook/broken-baseline | BROKEN BASELINE (exit 1) | BROKEN BASELINE (exit 1) | no |
 | webhook/broken-edit | EDIT REJECTED — RECOVERY VERIFIED (exit 2) | EDIT REJECTED — RECOVERY VERIFIED (exit 2) | yes |

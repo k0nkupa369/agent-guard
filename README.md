@@ -6,7 +6,11 @@ Agent Guard verifies the original behavior, applies the edit, and verifies again
 
 ## Run the local demo
 
-Use Node.js 22.18 or later. Install dependencies once with `npm ci`, then run `npm run demo`.
+Use Node.js 22.18 or later. Install dependencies once with `npm ci`, then run the demo.
+
+```sh
+npm run demo
+```
 
 The demo applies a bundled edit that stops enquiry emails. The terminal output below is from one run. Each submission gets a new reference.
 
@@ -89,7 +93,7 @@ npm run --silent demo -- --live
 
 After verifying baseline delivery, Agent Guard sends the synthetic task and form definition to OpenAI in one request to GPT-6 Luna. The request uses your API account. The guard reports the first outcome and runs the same local delivery and recovery checks for a valid proposal. Provider or credential errors exit with status 5. The JSON report identifies the model and includes the proposal when it passes form-definition validation.
 
-Run `npm run check:cli` to check all four demos, both baseline commands, and the live contact path with a provider stub. CI runs the same checks without an API key.
+CI uses a local provider stub for the live path. It needs no OpenAI credentials.
 
 ## Guard your own change
 
@@ -108,10 +112,10 @@ const result = await guardedApply({
 	rollback: () => { active = original; },
 });
 
-console.log(result.outcome); // accepted
+console.log(result.outcome);
 ```
 
-For a real deployment, capture the rollback state before applying the change. Use fresh probes in `verify`. If `apply` throws, the library calls `rollback` because part of the target may have changed. A rollback counts as recovered only after the recovery probe passes.
+This example prints `accepted`. For a real deployment, capture the rollback state before applying the change. Use fresh probes in `verify`. If `apply` throws, the library calls `rollback` because part of the target may have changed. A rollback counts as recovered only after the recovery probe passes.
 
 ## Verify baseline delivery
 
@@ -126,3 +130,48 @@ npm run baseline -- --simulate-no-delivery
 ```
 
 This scenario delivers an older enquiry first. The next submission shows the same success response but sends no email. The command prints `BROKEN BASELINE` and exits with `1` once the 1.5-second delivery window expires. Each run discards its inbox and closes both local servers.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    Config["JSON check definition"] --> CLI["CLI runner"]
+    CLI --> Adapter["Loopback adapter and evidence"]
+    Adapter --> Guard["guardedApply"]
+    Caller["Library caller and callbacks"] --> Guard
+    Guard --> Baseline{"Baseline passes?"}
+    Baseline -- No --> Blocked["Leave target untouched"]
+    Baseline -- Yes --> Apply["Apply change"]
+    Apply -- Returns --> Verify{"Candidate passes?"}
+    Verify -- Yes --> Keep["Keep change"]
+    Apply -- Throws --> Rollback["Roll back"]
+    Verify -- No --> Rollback
+    Rollback -- Returns --> Recover{"Fresh recovery probe passes?"}
+    Rollback -- Throws --> Failed["Recovery failed"]
+    Recover -- Yes --> Recovered["Recovery verified"]
+    Recover -- No --> Failed
+```
+
+The CLI adapters collect evidence from the local inbox, webhook ledger, conversion collector, or redirect destination. The library runs the same lifecycle with callbacks you supply.
+
+## How to add a check
+
+The [temporary redirect example](checks/redirect-temporary.json) changes a permanent HTTP 308 redirect to a temporary HTTP 307. It also tries HTTP 301 to exercise rollback.
+
+1. Copy `checks/redirect-temporary.json` to `checks/redirect-copy.json`. The file name without `.json` is the CLI command. Use lowercase letters, numbers, and hyphens, start with a letter, and reserve `baseline` for the standalone command.
+2. Set `adapter` to `mail`, `webhook`, `conversion`, or `redirect`. For a redirect, set `settings.baselineStatus` and `settings.candidateStatus` to the redirect statuses you expect. The adapter also checks that the destination receives the original POST and body.
+3. Add scenarios with a `proposal` and an `expect` value. Use `accepted`, `brokenBaseline`, `recovered`, `recoveryFailed`, or `invalid` for the offline adapters. Set `default` to the scenario the CLI should run without a flag. Use `fault` with `baseline` or `recovery` to inject a failure at that stage.
+4. Run `node src/cli.ts redirect-copy` to see the check accept the 307. Run `node src/cli.ts redirect-copy --scenario loses-body` to see the original 308 restored and recovery verified.
+
+Run `npm test` to check the CLI and library. It discovers additional check files automatically. Run `npm run eval` to print and regenerate the [scenario results](docs/eval.md). The saved live run is included as historical evidence.
+
+## Limitations
+
+- The bundled adapters use synthetic fixtures on `127.0.0.1`. Each run discards its local state when it exits. Only the optional `--live` demo requests a proposal from a remote service.
+- A check file selects an existing adapter. To check a different kind of system, supply your own callbacks to `guardedApply`.
+- Your callbacks own the snapshot, target permissions, timeouts, and write coordination. A process crash can interrupt recovery. A rollback cannot recover an enquiry that was already lost.
+- The live report records one proposal. It provides no estimate of model reliability.
+
+## What's next
+
+Add a staging deployment example with a persistent snapshot and an independent health check. An MCP wrapper could expose that specific guarded deployment to an agent.
