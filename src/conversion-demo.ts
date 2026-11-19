@@ -1,14 +1,15 @@
 import { withContactDemo } from './delivery.ts';
 import { readRequestBody, withLoopbackHttp } from './loopback-http.ts';
-import { guardOutcome, runOutcome, type OutcomeScenario, type OutcomeStage } from './outcome-demo.ts';
+import { guardOutcome, type OutcomeStage } from './outcome-demo.ts';
+import type { CheckScenario } from './check-definitions.ts';
 
 type Definition = 'off' | 'delivered' | 'confirmation';
 
-async function evaluateConversions(scenario: OutcomeScenario) {
+export async function evaluateConversion(scenario: CheckScenario) {
   const collected: string[] = [];
   const target = {
     definition: 'off' as Definition,
-    proposal: scenario === 'valid' ? 'delivered' : scenario === 'invalid' ? 'unknown' : 'confirmation',
+    proposal: scenario.proposal,
   };
 
   return withLoopbackHttp(async (request, response) => {
@@ -49,8 +50,8 @@ async function evaluateConversions(scenario: OutcomeScenario) {
 
     async function check(stage: OutcomeStage) {
       const before = (await conversions()).length;
-      contact.withholdMail = (stage === 'baseline' && scenario === 'broken-baseline') ||
-        (stage === 'recovery' && scenario === 'failed-recovery');
+      contact.withholdMail = (stage === 'baseline' && scenario.fault === 'baseline') ||
+        (stage === 'recovery' && scenario.fault === 'recovery');
       const delivered = await checkDelivery('baseline');
       const enquiries = [delivered];
       const afterDelivery = (await conversions()).slice(before);
@@ -79,8 +80,4 @@ async function evaluateConversions(scenario: OutcomeScenario) {
       check,
     }));
   }));
-}
-
-export function runConversionDemo(args: string[]) {
-  return runOutcome('conversion', args, evaluateConversions);
 }

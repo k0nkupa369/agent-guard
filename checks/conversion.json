@@ -1,0 +1,11 @@
+{
+  "adapter": "conversion",
+  "default": "broken-edit",
+  "scenarios": {
+    "valid": {"proposal": "delivered", "expect": "accepted"},
+    "broken-baseline": {"proposal": "confirmation", "expect": "brokenBaseline", "fault": "baseline"},
+    "broken-edit": {"proposal": "confirmation", "expect": "recovered"},
+    "failed-recovery": {"proposal": "confirmation", "expect": "recoveryFailed", "fault": "recovery"},
+    "invalid": {"proposal": "unknown", "expect": "invalid"}
+  }
+}

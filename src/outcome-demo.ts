@@ -7,8 +7,6 @@ export const verdicts = {
   providerError: { exit: 5, text: 'PROVIDER ERROR' },
 };
 
-const scenarios = ['valid', 'broken-baseline', 'broken-edit', 'failed-recovery', 'invalid'] as const;
-export type OutcomeScenario = (typeof scenarios)[number];
 export type OutcomeStage = 'baseline' | 'candidate' | 'recovery';
 
 type OutcomeCheck = { passed: boolean; failure?: string };
@@ -62,21 +60,10 @@ export async function guardOutcome<Definition>(target: OutcomeTarget<Definition>
   return report(recovery === 'verified' ? verdicts.recovered : verdicts.recoveryFailed);
 }
 
-export async function runOutcome<Extra extends string = never>(
-  name: string,
-  args: string[],
-  launch: (scenario: OutcomeScenario | Extra) => ReturnType<typeof guardOutcome>,
-  extraScenario?: Extra,
-) {
-  const options = extraScenario ? [...scenarios, extraScenario] : scenarios;
-  const scenario = args.length === 0 ? 'broken-edit' : options.find((option) => option === args[1]);
-  if (!scenario || (args.length !== 0 && (args.length !== 2 || args[0] !== '--scenario'))) {
-    console.error(`Usage: npm run ${name} [-- --scenario ${options.join('|')}]`);
-    return 64;
-  }
+export async function runOutcome(name: string, scenario: string, launch: () => ReturnType<typeof guardOutcome>) {
   let result;
   try {
-    result = await launch(scenario);
+    result = await launch();
   } catch (error) {
     result = {
       ...verdicts.brokenBaseline, change: 'not-applied', recovery: 'not-attempted',

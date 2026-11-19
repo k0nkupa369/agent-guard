@@ -23,17 +23,6 @@ export const originalForm: FormDefinition = {
   emailFields: ['reference', 'name', 'email', 'message'],
 };
 
-const companyField = { name: 'company', required: false } as const;
-const validProposal: FormDefinition = {
-  fields: [...originalForm.fields, companyField],
-  emailFields: [...originalForm.emailFields, 'company'],
-};
-
-export const bundledProposals = {
-  'bundled-valid': validProposal,
-  'bundled-broken': { ...validProposal, emailFields: [] },
-};
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

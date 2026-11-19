@@ -1,0 +1,15 @@
+{
+  "adapter": "redirect",
+  "default": "broken-edit",
+  "settings": {
+    "baselineStatus": 307,
+    "candidateStatus": 308
+  },
+  "scenarios": {
+    "valid": {"proposal": 308, "expect": "accepted"},
+    "broken-baseline": {"proposal": 301, "expect": "brokenBaseline", "fault": "baseline"},
+    "broken-edit": {"proposal": 301, "expect": "recovered"},
+    "failed-recovery": {"proposal": 301, "expect": "recoveryFailed", "fault": "recovery"},
+    "invalid": {"proposal": 302, "expect": "invalid"}
+  }
+}
