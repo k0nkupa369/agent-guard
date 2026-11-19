@@ -1,25 +1,53 @@
 # Agent Guard
 
-Agent Guard checks whether a contact-form enquiry reaches a local mail server.
+A site edit silently broke contact-form delivery. The form still showed a success message, but enquiries never reached the inbox and were lost.
+
+Agent Guard verifies the original behavior, applies the edit, and verifies again. If the check fails, it rolls back the edit and sends a fresh probe to confirm recovery.
 
 ## Run the local demo
 
-Use Node.js 22.18 or later and run `npm ci` once to install dependencies. Then run:
+Use Node.js 22.18 or later. Install dependencies once with `npm ci`, then run `npm run demo`.
 
-```sh
-npm run demo
+The demo applies a bundled edit that stops enquiry emails. The terminal output below is from one run. Each submission gets a new reference.
+
+```text
+Checking baseline delivery before applying bundled-broken
+baseline (01ece868-fdb7-4ad3-b9b7-7b0424c400eb): form reported success; matching email received
+Applied bundled-broken
+with-company (e5eca5a2-22a3-4b06-83c3-458dbea64a30): form reported success; No matching email within 1500 ms (e5eca5a2-22a3-4b06-83c3-458dbea64a30)
+without-company (6dcf0f48-1c05-4485-bb87-7828f646008a): form reported success; No matching email within 1500 ms (6dcf0f48-1c05-4485-bb87-7828f646008a)
+Edit rejected. Original form restored. Checking recovery.
+recovery (a820ae9b-8019-484c-b054-14694b9d355b): form reported success; matching email received
+EDIT REJECTED — RECOVERY VERIFIED
 ```
 
-The default demo verifies the original form, applies a bundled edit that confirms enquiries without sending mail, and restores the original form. Recovery is verified when a new enquiry reaches the local inbox. The guard keeps an accepted edit for the current run.
+Progress goes to stderr. Use `npm run --silent demo` for the JSON report on stdout.
 
-| Command | Outcome | Exit |
+| Exit | Outcome |
+| --- | --- |
+| 0 | Edit accepted or standalone baseline verified |
+| 1 | Baseline broken |
+| 2 | Edit rejected and recovery verified |
+| 3 | Edit rejected and recovery failed |
+| 4 | Invalid proposal |
+| 5 | Provider error |
+| 64 | Invalid command or demo arguments |
+
+Invalid arguments to the standalone `baseline` command also exit with `2`.
+
+## Recorded live walkthrough
+
+The recorded OpenAI run used `gpt-6-luna`. The task was to add an optional Company field and append Company to the email fields.
+
+The proposal kept the original fields and email order. It appended `{"name":"company","required":false}` to the form fields and `"company"` to the email fields.
+
+| Submission | Reference | Local inbox evidence |
 | --- | --- | --- |
-| `npm run demo` | Edit rejected, recovery verified | 2 |
-| `npm run --silent demo -- --scenario valid` | Edit accepted | 0 |
-| `npm run --silent demo -- --scenario broken-baseline` | Baseline broken, proposal left unapplied | 1 |
-| `npm run --silent demo -- --scenario failed-recovery` | Edit rejected, recovery failed | 3 |
+| Original form | `bca2f805-581d-454c-b937-d35ce03583a1` | Matching enquiry email received |
+| Edited form with Company | `b1a89aa4-e237-41c7-bde6-0b268cfab400` | Matching email included `Company: Example Studio` |
+| Edited form without Company | `79d240f8-dc61-47fc-b0a5-8a04c7af850b` | Matching email had no Company line |
 
-The terminal progress and verdict go to stderr. Use `npm run --silent demo` to pipe the JSON report from stdout. The report includes each check's reference, rendered form result, confirmation, and matching email or failure. Exit status 4 identifies an invalid proposal.
+The guard kept the edit and reported **EDIT ACCEPTED** with exit status `0`. [Read the recorded JSON report](docs/live-run.json).
 
 ## Webhook retries
 
@@ -62,22 +90,6 @@ npm run --silent demo -- --live
 After verifying baseline delivery, Agent Guard sends the synthetic task and form definition to OpenAI in one request to GPT-6 Luna. The request uses your API account. The guard reports the first outcome and runs the same local delivery and recovery checks for a valid proposal. Provider or credential errors exit with status 5. The JSON report identifies the model and includes the proposal when it passes form-definition validation.
 
 Run `npm run check:cli` to check all four demos, both baseline commands, and the live contact path with a provider stub. CI runs the same checks without an API key.
-
-## Recorded live walkthrough
-
-On 19 November 2026 (Pacific/Auckland), one OpenAI Responses API run used the configured model `gpt-6-luna`. The task was to add an optional Company field and append Company to the email fields.
-
-The proposal kept the original fields and email order. It appended `{"name":"company","required":false}` to the form fields and `"company"` to the email fields.
-
-| Submission | Reference | Local inbox evidence |
-| --- | --- | --- |
-| Original form | `bca2f805-581d-454c-b937-d35ce03583a1` | Matching enquiry email received |
-| Edited form with Company | `b1a89aa4-e237-41c7-bde6-0b268cfab400` | Matching email included `Company: Example Studio` |
-| Edited form without Company | `79d240f8-dc61-47fc-b0a5-8a04c7af850b` | Matching email had no Company line |
-
-All three rendered form and submission checks passed. The guard kept this proposal for the run and reported **EDIT ACCEPTED** with exit status `0`. [Read the recorded JSON report](docs/live-run.json).
-
-The offline quickstart was also verified from a clean copy on Node.js 22.23.1. The edited form confirmed both submissions without sending mail. After restoration, a fresh matching email arrived and `npm run demo` reported **EDIT REJECTED — RECOVERY VERIFIED** with exit status `2`.
 
 ## Verify baseline delivery
 
