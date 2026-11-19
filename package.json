@@ -12,10 +12,12 @@
     "webhook": "node src/cli.ts webhook",
     "conversion": "node src/cli.ts conversion",
     "redirect": "node src/cli.ts redirect",
-    "check:cli": "node scripts/check-cli.ts && node scripts/check-live.ts && node scripts/check-outcomes.ts",
+    "check:cli": "node scripts/check-cli.ts && node scripts/check-live.ts && node scripts/check-outcomes.ts && npm run build --silent && node scripts/check-library.mjs",
     "typecheck": "tsc --noEmit",
     "test": "npm run typecheck && npm run check:cli",
-    "eval": "node scripts/eval.ts"
+    "eval": "node scripts/eval.ts",
+    "build": "tsc -p tsconfig.library.json",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "mailparser": "3.14.5",
@@ -25,5 +27,13 @@
   "devDependencies": {
     "@types/node": "22.20.5",
     "typescript": "7.0.2"
-  }
+  },
+  "exports": {
+    "types": "./dist/guarded-apply.d.ts",
+    "default": "./dist/guarded-apply.js"
+  },
+  "files": [
+    "dist/guarded-apply.js",
+    "dist/guarded-apply.d.ts"
+  ]
 }

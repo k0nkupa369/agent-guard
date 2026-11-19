@@ -91,6 +91,28 @@ After verifying baseline delivery, Agent Guard sends the synthetic task and form
 
 Run `npm run check:cli` to check all four demos, both baseline commands, and the live contact path with a provider stub. CI runs the same checks without an API key.
 
+## Guard your own change
+
+Run `npm pack` in this repository. Install the resulting `.tgz` file in your Node project, then import `guardedApply`. The library runs your callbacks and returns a typed outcome.
+
+```ts
+import { guardedApply } from 'agent-guard';
+
+const original = 'current release';
+let active = original;
+
+const result = await guardedApply({
+	baseline: () => active === original,
+	apply: () => { active = 'proposed release'; },
+	verify: (stage) => active === (stage === 'candidate' ? 'proposed release' : original),
+	rollback: () => { active = original; },
+});
+
+console.log(result.outcome); // accepted
+```
+
+For a real deployment, capture the rollback state before applying the change. Use fresh probes in `verify`. If `apply` throws, the library calls `rollback` because part of the target may have changed. A rollback counts as recovered only after the recovery probe passes.
+
 ## Verify baseline delivery
 
 ```sh

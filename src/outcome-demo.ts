@@ -1,3 +1,5 @@
+import { guardedApply, type VerifyStage } from './guarded-apply.ts';
+
 export const verdicts = {
   accepted: { exit: 0, text: 'EDIT ACCEPTED' },
   brokenBaseline: { exit: 1, text: 'BROKEN BASELINE' },
@@ -7,7 +9,14 @@ export const verdicts = {
   providerError: { exit: 5, text: 'PROVIDER ERROR' },
 };
 
-export type OutcomeStage = 'baseline' | 'candidate' | 'recovery';
+export const outcomeVerdicts = {
+  blocked: verdicts.brokenBaseline,
+  accepted: verdicts.accepted,
+  recovered: verdicts.recovered,
+  'recovery-failed': verdicts.recoveryFailed,
+};
+
+export type OutcomeStage = 'baseline' | VerifyStage;
 
 type OutcomeCheck = { passed: boolean; failure?: string };
 type OutcomeTarget<Definition> = {
@@ -27,6 +36,8 @@ export async function guardOutcome<Definition>(target: OutcomeTarget<Definition>
   let recovery = 'not-attempted';
   let applications = 0;
   let proposal: Definition | undefined;
+  let edit: { original: Definition; candidate: Definition };
+  let invalid = false;
   const report = (verdict: (typeof verdicts)[keyof typeof verdicts]) => ({
     ...verdict, change, recovery, applications, proposal, checks,
   });
@@ -43,21 +54,35 @@ export async function guardOutcome<Definition>(target: OutcomeTarget<Definition>
     return check.passed;
   }
 
-  if (!await observe('baseline')) return report(verdicts.brokenBaseline);
-  if (!target.validate(target.proposal)) return report(verdicts.invalid);
-  proposal = target.proposal;
-  const original = structuredClone(target.definition);
-  target.definition = structuredClone(proposal);
-  applications++;
-  if (await observe('candidate')) {
-    change = 'kept';
-    return report(verdicts.accepted);
-  }
-  target.definition = original;
-  change = 'restored';
-  console.error('Edit rejected. Original definition restored. Checking recovery.');
-  recovery = await observe('recovery') ? 'verified' : 'failed';
-  return report(recovery === 'verified' ? verdicts.recovered : verdicts.recoveryFailed);
+  const result = await guardedApply({
+    baseline: async () => {
+      if (!await observe('baseline')) return false;
+      if (!target.validate(target.proposal)) {
+        invalid = true;
+        return false;
+      }
+      proposal = target.proposal;
+      edit = { original: structuredClone(target.definition), candidate: structuredClone(proposal) };
+      return true;
+    },
+    apply: () => {
+      target.definition = edit.candidate;
+      change = 'applied';
+      applications++;
+    },
+    verify: observe,
+    rollback: () => {
+      target.definition = edit.original;
+      change = 'restored';
+      console.error('Edit rejected. Original definition restored. Checking recovery.');
+    },
+  });
+
+  if (result.outcome === 'accepted') change = 'kept';
+  if (result.outcome === 'recovered') recovery = 'verified';
+  if (result.outcome === 'recovery-failed') recovery = 'failed';
+  if (result.outcome === 'blocked' && result.failure.kind === 'threw') throw result.failure.cause;
+  return report(invalid ? verdicts.invalid : outcomeVerdicts[result.outcome]);
 }
 
 export async function runOutcome(name: string, scenario: string, launch: () => ReturnType<typeof guardOutcome>) {

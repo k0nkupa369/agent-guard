@@ -1,7 +1,8 @@
 import { withContactDemo, type DeliveryCheck } from './delivery.ts';
 import { isFormDefinition, type FormDefinition } from './form-definition.ts';
 import { openAIModel, requestOpenAIProposal } from './openai-proposal.ts';
-import { verdicts } from './outcome-demo.ts';
+import { outcomeVerdicts, verdicts } from './outcome-demo.ts';
+import { guardedApply } from './guarded-apply.ts';
 import type { CheckScenario } from './check-definitions.ts';
 
 export async function runMailDemo(scenario: string, fixture: Pick<CheckScenario, 'proposal' | 'fault'>, live = false) {
@@ -23,48 +24,65 @@ export async function runMailDemo(scenario: string, fixture: Pick<CheckScenario,
 
   try {
     await withContactDemo(async (target, checkDelivery) => {
-      target.withholdMail = fixture.fault === 'baseline';
-      console.error(`Checking baseline delivery before applying ${changeSource}`);
-      if (!record(await checkDelivery('baseline'))) return;
+      let edit: { original: FormDefinition; candidate: FormDefinition };
+      const result = await guardedApply({
+        baseline: async () => {
+          target.withholdMail = fixture.fault === 'baseline';
+          console.error(`Checking baseline delivery before applying ${changeSource}`);
+          if (!record(await checkDelivery('baseline'))) return false;
 
-      let proposal: unknown;
-      if (changeSource === 'openai') {
-        console.error(`Requesting one proposal from OpenAI (${openAIModel})`);
-        const result = await requestOpenAIProposal(target.definition);
-        if (result.kind !== 'proposal') {
-          verdict = result.kind === 'invalid' ? verdicts.invalid : verdicts.providerError;
-          failure = result.reason;
-          return;
-        }
-        proposal = result.value;
-      } else {
-        proposal = fixture.proposal;
-      }
-      if (!isFormDefinition(proposal)) {
-        verdict = verdicts.invalid;
-        failure = 'Proposal is not a valid form definition';
-        return;
-      }
-      if (live) liveProposal = proposal;
+          let proposal: unknown = fixture.proposal;
+          if (live) {
+            console.error(`Requesting one proposal from OpenAI (${openAIModel})`);
+            const result = await requestOpenAIProposal(target.definition);
+            if (result.kind !== 'proposal') {
+              verdict = result.kind === 'invalid' ? verdicts.invalid : verdicts.providerError;
+              failure = result.reason;
+              return false;
+            }
+            proposal = result.value;
+          }
+          if (!isFormDefinition(proposal)) {
+            verdict = verdicts.invalid;
+            failure = 'Proposal is not a valid form definition';
+            return false;
+          }
+          if (live) liveProposal = proposal;
+          edit = { original: structuredClone(target.definition), candidate: structuredClone(proposal) };
+          return true;
+        },
+        apply: () => {
+          target.definition = edit.candidate;
+          change = 'applied';
+          console.error(`Applied ${changeSource}`);
+        },
+        verify: async (stage) => {
+          if (stage === 'recovery') return record(await checkDelivery('recovery'));
+          let withCompany: boolean;
+          let withoutCompany: boolean;
+          try {
+            withCompany = record(await checkDelivery('with-company', 'Example Studio'));
+          } finally {
+            withoutCompany = record(await checkDelivery('without-company'));
+          }
+          return withCompany && withoutCompany;
+        },
+        rollback: () => {
+          target.definition = edit.original;
+          change = 'restored';
+          target.withholdMail = fixture.fault === 'recovery';
+          console.error('Edit rejected. Original form restored. Checking recovery.');
+        },
+      });
 
-      const original = structuredClone(target.definition);
-      target.definition = structuredClone(proposal);
-      change = 'applied';
-      console.error(`Applied ${changeSource}`);
-      const withCompany = record(await checkDelivery('with-company', 'Example Studio'));
-      const withoutCompany = record(await checkDelivery('without-company'));
-      if (withCompany && withoutCompany) {
-        change = 'kept';
-        verdict = verdicts.accepted;
-        return;
+      if (result.outcome !== 'blocked') verdict = outcomeVerdicts[result.outcome];
+      if (result.outcome === 'accepted') change = 'kept';
+      if (result.outcome === 'recovered') recovery = 'verified';
+      if (result.outcome === 'recovery-failed') {
+        recovery = 'failed';
+        if (result.recoveryFailure.kind === 'threw') throw result.recoveryFailure.cause;
       }
-
-      target.definition = original;
-      change = 'restored';
-      target.withholdMail = fixture.fault === 'recovery';
-      console.error('Edit rejected. Original form restored. Checking recovery.');
-      recovery = record(await checkDelivery('recovery')) ? 'verified' : 'failed';
-      verdict = recovery === 'verified' ? verdicts.recovered : verdicts.recoveryFailed;
+      if (result.outcome !== 'accepted' && result.failure.kind === 'threw') throw result.failure.cause;
     });
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error);
